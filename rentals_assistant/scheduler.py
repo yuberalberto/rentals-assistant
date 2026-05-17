@@ -6,7 +6,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from rentals_assistant import pipeline
 from rentals_assistant.config import load_config
-from rentals_assistant.notifier import send_alert
+from rentals_assistant.notifier import send_alert, send_summary
 from rentals_assistant.scrapers import build_scrapers
 from rentals_assistant.store import Store
 
@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 async def _run_pipeline(scrapers, store, notifier) -> None:
-    await pipeline.run(scrapers, store, notifier)
+    result = await pipeline.run(scrapers, store, notifier)
+    await send_summary(result)
 
 
 def build_scheduler(config, scrapers, store, notifier) -> AsyncIOScheduler:

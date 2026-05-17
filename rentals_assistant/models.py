@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
@@ -7,12 +8,12 @@ class RawListing:
     external_id: str
     url: str
     title: str
-    price_cad: int | None = None
-    bedrooms: int | None = None
-    city: str | None = None
-    floor_level: str | None = None       # "upper" | "main" | "basement" | "unknown"
-    laundry_inunit: bool | None = None   # True | False | None (unknown)
-    outdoor_space: bool | None = None    # True | False | None (unknown)
-    parking_spots: int | None = None     # 0, 1, 2, … | None (unknown)
-    pets: str | None = None              # "cats_confirmed" | "allowed" | "not_allowed" | "unknown"
-    utilities: str | None = None         # "included" | "extra" | "unknown"
+    price_cad: Optional[int] = None
+    bedrooms: Optional[int] = None
+    city: Optional[str] = None
+    floor_level: Optional[str] = None       # "upper" | "main" | "basement" | "unknown"
+    laundry_inunit: Optional[bool] = None   # True | False | None (unknown)
+    outdoor_space: Optional[bool] = None    # True | False | None (unknown)
+    parking_spots: Optional[int] = None     # 0, 1, 2, … | None (unknown)
+    pets: Optional[str] = None              # "cats_confirmed" | "allowed" | "not_allowed" | "unknown"
+    utilities: Optional[str] = None         # "included" | "extra" | "unknown"

@@ -1,6 +1,7 @@
 import sqlite3
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
+from typing import Union
 
 _CREATE_TABLE = """
 CREATE TABLE IF NOT EXISTS listings (
@@ -41,7 +42,7 @@ ON CONFLICT(id) DO UPDATE SET last_seen = excluded.last_seen
 
 
 class Store:
-    def __init__(self, db_path: str | Path = "listings.db") -> None:
+    def __init__(self, db_path: Union[str, Path] = "listings.db") -> None:
         self._conn = sqlite3.connect(Path(db_path))
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute(_CREATE_TABLE)
@@ -54,7 +55,7 @@ class Store:
         return cur.fetchone() is None
 
     def save(self, listing: dict) -> None:
-        now = datetime.now(UTC).isoformat()
+        now = datetime.utcnow().isoformat()
         row = {
             "id": listing["id"],
             "source": listing.get("source"),

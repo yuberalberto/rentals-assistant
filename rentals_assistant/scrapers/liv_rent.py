@@ -4,6 +4,7 @@ import re
 
 import httpx
 
+from ..http import create_client
 from ..models import RawListing
 from .base import Scraper
 
@@ -58,11 +59,7 @@ query {{
 
 class LivRentScraper(Scraper):
     def __init__(self, client: httpx.AsyncClient | None = None) -> None:
-        self._client = client or httpx.AsyncClient(
-            headers={"User-Agent": "Mozilla/5.0 (compatible; rentals-assistant/1.0)"},
-            timeout=30,
-            follow_redirects=True,
-        )
+        self._client = client or create_client(timeout=30)
 
     async def fetch(self) -> list[RawListing]:
         stubs: list[dict] = []

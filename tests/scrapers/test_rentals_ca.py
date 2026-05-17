@@ -212,11 +212,11 @@ async def test_fetch_queries_kitchener_waterloo_cambridge():
     mock_response.text = load_fixture("rentals_ca_kitchener.html")
     mock_response.raise_for_status = MagicMock()
     mock_client = AsyncMock()
-    mock_client.get = AsyncMock(return_value=mock_response)
+    mock_client.request = AsyncMock(return_value=mock_response)
 
     await RentalsCaScraper(client=mock_client).fetch()
 
-    called_urls = [call.args[0] for call in mock_client.get.call_args_list]
+    called_urls = [call.args[1] for call in mock_client.request.call_args_list]
     assert any("kitchener" in u for u in called_urls)
     assert any("waterloo" in u for u in called_urls)
     assert any("cambridge" in u for u in called_urls)
@@ -227,7 +227,7 @@ async def test_fetch_aggregates_results_from_all_cities():
     mock_response.text = load_fixture("rentals_ca_kitchener.html")
     mock_response.raise_for_status = MagicMock()
     mock_client = AsyncMock()
-    mock_client.get = AsyncMock(return_value=mock_response)
+    mock_client.request = AsyncMock(return_value=mock_response)
 
     result = await RentalsCaScraper(client=mock_client).fetch()
 
