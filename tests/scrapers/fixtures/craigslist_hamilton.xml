@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns="http://purl.org/rss/1.0/"
+         xmlns:enc="http://purl.oclc.org/net/rss_2.0/enc#"
+         xmlns:dc="http://purl.org/dc/elements/1.1/"
+         xmlns:dcterms="http://purl.org/dc/terms/"
+         xmlns:taxo="http://purl.org/rss/1.0/modules/taxonomy/"
+         xmlns:content="http://purl.org/rss/1.0/modules/content/">
+
+  <channel rdf:about="https://hamilton.craigslist.org/search/apa">
+    <title>craigslist | apartments / housing for rent in hamilton</title>
+    <link>https://hamilton.craigslist.org/search/apa</link>
+    <description></description>
+    <dc:date>2026-05-16T20:00:00-04:00</dc:date>
+    <dc:language>en-us</dc:language>
+    <dc:rights>Copyright 2026 craigslist</dc:rights>
+    <items>
+      <rdf:Seq>
+        <rdf:li rdf:resource="https://hamilton.craigslist.org/apa/1.html"/>
+        <rdf:li rdf:resource="https://hamilton.craigslist.org/apa/2.html"/>
+        <rdf:li rdf:resource="https://hamilton.craigslist.org/apa/3.html"/>
+        <rdf:li rdf:resource="https://hamilton.craigslist.org/apa/4.html"/>
+      </rdf:Seq>
+    </items>
+  </channel>
+
+  <item rdf:about="https://hamilton.craigslist.org/apa/1.html">
+    <title><![CDATA[$1,850 / 2br - Bright Upper Floor 2BR (Kitchener)]]></title>
+    <link>https://hamilton.craigslist.org/apa/1.html</link>
+    <description><![CDATA[
+      Spacious 2 bedroom upper floor apartment in Kitchener.
+      In-unit laundry, balcony, cats welcome.
+      Utilities included. 2 parking spots available.
+    ]]></description>
+    <dc:date>2026-05-15T10:30:00-04:00</dc:date>
+    <dc:language>en-us</dc:language>
+    <enc:enclosure resource="https://images.craigslist.org/1.jpg" type="image/jpeg"/>
+  </item>
+
+  <item rdf:about="https://hamilton.craigslist.org/apa/2.html">
+    <title><![CDATA[$1,650 / 2br - Main Floor Suite (Cambridge)]]></title>
+    <link>https://hamilton.craigslist.org/apa/2.html</link>
+    <description><![CDATA[
+      Main floor 2 bedroom near schools.
+      Shared laundry, pets allowed, 1 parking.
+      Utilities extra.
+    ]]></description>
+    <dc:date>2026-05-14T08:00:00-04:00</dc:date>
+    <dc:language>en-us</dc:language>
+  </item>
+
+  <item rdf:about="https://hamilton.craigslist.org/apa/3.html">
+    <title><![CDATA[$1,200 / 2br - Basement Apartment (Waterloo)]]></title>
+    <link>https://hamilton.craigslist.org/apa/3.html</link>
+    <description><![CDATA[
+      Budget basement 2 bedroom.
+      No pets. Coin laundry.
+    ]]></description>
+    <dc:date>2026-05-13T14:00:00-04:00</dc:date>
+    <dc:language>en-us</dc:language>
+  </item>
+
+  <item rdf:about="https://hamilton.craigslist.org/apa/4.html">
+    <title><![CDATA[ Price TBD - Coming Soon (Kitchener)]]></title>
+    <link>https://hamilton.craigslist.org/apa/4.html</link>
+    <description><![CDATA[
+      Details coming soon. Contact for info.
+    ]]></description>
+    <dc:date>2026-05-12T09:00:00-04:00</dc:date>
+    <dc:language>en-us</dc:language>
+  </item>
+
+</rdf:RDF>

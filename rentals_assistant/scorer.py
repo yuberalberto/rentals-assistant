@@ -1,0 +1,49 @@
+from dataclasses import dataclass, field
+
+PROXIMITY_CITIES = {"cambridge", "south kitchener"}
+
+TIER_PERFECT = "perfect"
+TIER_STRONG = "strong"
+TIER_CHECK = "check"
+
+
+@dataclass
+class ScoringResult:
+    score: int
+    tier: str
+    flags: list[str] = field(default_factory=list)
+
+
+def _assign_tier(score: int) -> str:
+    if score == 4:
+        return TIER_PERFECT
+    if score >= 2:
+        return TIER_STRONG
+    return TIER_CHECK
+
+
+def score_listing(listing: dict) -> ScoringResult:
+    points = 0
+    flags: list[str] = []
+
+    if listing.get("utilities") == "included":
+        points += 1
+        flags.append("★")
+
+    if listing.get("floor_level") == "upper":
+        points += 1
+        flags.append("🏢")
+
+    if listing.get("outdoor_space"):
+        points += 1
+        flags.append("🌿")
+
+    if (listing.get("parking_spots") or 0) >= 2:
+        points += 1
+        flags.append("🚗")
+
+    city = (listing.get("city") or "").lower()
+    if any(label in city for label in PROXIMITY_CITIES):
+        flags.append("📍")
+
+    return ScoringResult(score=points, tier=_assign_tier(points), flags=flags)

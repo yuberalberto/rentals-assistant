@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "engram": {
+      "command": "cmd",
+      "args": ["/c", "engram mcp"],
+      "disabled": false
+    }
+  }
+}

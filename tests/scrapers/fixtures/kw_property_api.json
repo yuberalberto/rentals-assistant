@@ -1,0 +1,82 @@
+[
+  {
+    "_id": "69de62142cc52e369d68a493",
+    "friendly_url": "",
+    "isVerified": "pending",
+    "information": {"unit": "1"},
+    "amenities_list": [
+      {"name": "smoking", "included_in_apartment": false, "type": "geral"},
+      {"name": "pets", "included_in_apartment": true, "type": "geral"},
+      {"name": "ensuite_washer", "included_in_apartment": true, "type": "geral"},
+      {"name": "ensuite_dryer", "included_in_apartment": true, "type": "geral"},
+      {"name": "parking", "included_in_apartment": true, "type": "geral"},
+      {"name": "dishwasher", "included_in_apartment": true, "type": "geral"},
+      {"name": "air_conditioner", "included_in_apartment": true, "type": "geral"},
+      {"name": "fridge", "included_in_apartment": true, "type": "geral"},
+      {"name": "steel_appliances", "included_in_apartment": true, "type": "geral"},
+      {"name": "laundry_facilities", "included_in_building": true, "type": "geral"},
+      {"name": "outdoor_parking", "included_in_building": true, "type": "geral"},
+      {"name": "parking", "included_in_apartment": false, "included_in_building": true, "detail": "yes", "estimated_monthly_cost": 0, "amount": 2, "type": "extra"}
+    ],
+    "price": 2650,
+    "full_address": "250 Heslop Rd #1, Cambridge, ON L9T 1B8, Canada",
+    "address_details": {
+      "street_number": "250",
+      "street_name": "Heslop Road",
+      "city": "Cambridge",
+      "province": "ON",
+      "country": "Canada",
+      "postal_code": "L9T 1B8"
+    },
+    "bedrooms": 3,
+    "bathrooms": 1.5,
+    "status": "active",
+    "coordinates_markers": [-79.8749642, 43.5085663],
+    "whitelabel_name": "kwproperty",
+    "whitelabel_id": "6931f6f3cd23c75167f8dd66",
+    "availability_date": "2026-06-01T04:00:00.000Z",
+    "latest_offer": 2650,
+    "following": false
+  },
+  {
+    "_id": "6a04a6de879b338cabc61a04",
+    "friendly_url": "",
+    "isVerified": "pending",
+    "information": {"unit": "404"},
+    "amenities_list": [
+      {"name": "smoking", "included_in_apartment": false, "type": "geral"},
+      {"name": "pets", "included_in_apartment": true, "type": "geral"},
+      {"name": "ensuite_washer", "included_in_apartment": true, "type": "geral"},
+      {"name": "ensuite_dryer", "included_in_apartment": true, "type": "geral"},
+      {"name": "dishwasher", "included_in_apartment": true, "type": "geral"},
+      {"name": "air_conditioner", "included_in_apartment": true, "type": "geral"},
+      {"name": "fridge", "included_in_apartment": true, "type": "geral"},
+      {"name": "laundry_facilities", "included_in_building": true, "type": "geral"},
+      {"name": "rooftop", "included_in_building": true, "type": "geral"},
+      {"name": "party", "included_in_building": true, "type": "geral"},
+      {"name": "elevator", "included_in_building": true, "type": "geral"},
+      {"name": "internet", "included_in_apartment": true, "included_in_building": false, "detail": "yes", "estimated_monthly_cost": 0, "type": "extra"},
+      {"name": "locker", "included_in_apartment": false, "included_in_building": true, "detail": "yes", "estimated_monthly_cost": 0, "type": "extra"}
+    ],
+    "price": 2200,
+    "full_address": "212 King William St #404, Waterloo, ON L8R 0A7, Canada",
+    "address_details": {
+      "street_number": "212",
+      "street_name": "King William Street",
+      "neighborhood": "Beasley",
+      "city": "Waterloo",
+      "province": "ON",
+      "country": "Canada",
+      "postal_code": "L8R 0A7"
+    },
+    "bedrooms": 2,
+    "bathrooms": 2,
+    "status": "active",
+    "coordinates_markers": [-79.8604567, 43.2550797],
+    "whitelabel_name": "kwproperty",
+    "whitelabel_id": "6931f6f3cd23c75167f8dd66",
+    "availability_date": "2026-08-01T04:00:00.000Z",
+    "latest_offer": 0,
+    "following": false
+  }
+]

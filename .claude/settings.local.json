@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(py -3.14 -m uv run pytest tests/test_filters.py --tb=line -q)",
+      "Bash(py -3.14 -m uv run pytest tests/test_scorer.py -v)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/test_scorer.py -v)",
+      "Bash(.venv/Scripts/python.exe --version)",
+      "Bash(.venv/Scripts/python.exe -c \"import sys; print\\(sys.path\\)\")",
+      "Bash(.venv/Scripts/uv run *)",
+      "Bash(py -3.14 -m uv run pytest tests/test_scorer.py -v --python .venv/Scripts/python.exe)",
+      "Bash(py -3.14 --version)",
+      "Bash(py --version)",
+      "Bash(py -3.14 -m uv run python --version)",
+      "Bash(py -3.14 -m uv run python -m pytest tests/test_scorer.py -v)",
+      "Bash(py -3.14 -m uv pip install --dev pytest pytest-asyncio)",
+      "Bash(py -3.14 -m uv sync --group dev)",
+      "Bash(py -3.14 -m uv pip install \"pytest>=8.3.2\" \"pytest-asyncio>=0.24.0\")",
+      "Bash(py -3.14 -m uv pip install --python .venv/Scripts/python.exe \"pytest>=8.3.2\" \"pytest-asyncio>=0.24.0\")",
+      "Bash(.venv/Scripts/python.exe -m pytest --version)",
+      "Bash(py -3.14 -m uv run pytest tests/test_notifier.py -x --tb=short)",
+      "Bash(py -3.14 -m uv run pytest tests/test_notifier.py -v --ignore-glob=\"*integration*\" -k \"not integration\")",
+      "Bash(py -3.14 -m uv run pytest -v -k \"not integration\")",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/scrapers/test_rentals_ca.py -q)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/scrapers/test_rentals_ca.py -v)",
+      "Bash(.venv/Scripts/python.exe -m pytest -q)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/test_kijiji_scraper.py -x --ignore-glob=\"*integration*\" -k \"not integration\" --tb=short -q)",
+      "Bash(.venv/Scripts/python.exe -m pytest --ignore=tests/test_kijiji_scraper.py -q)",
+      "Bash(mkdir -p \"c:\\\\Users\\\\yuber\\\\OneDrive\\\\Documents\\\\Dev\\\\rentals-assistant\\\\rentals_assistant\\\\scrapers\")",
+      "Bash(echo \"\")",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/test_kijiji_scraper.py -k \"not integration\" -v --tb=short)",
+      "Bash(.venv/Scripts/python.exe -m pytest -k \"not integration\" -v --tb=short)",
+      "Bash(.venv/Scripts/python.exe -m playwright install chromium)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/test_kijiji_scraper.py -m integration -v --tb=short -s)",
+      "Bash(c:\\\\Users\\\\yuber\\\\OneDrive\\\\Documents\\\\Dev\\\\rentals-assistant\\\\.venv\\\\Scripts\\\\python.exe -m pytest tests/test_pipeline.py -v)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/test_pipeline.py -v)",
+      "Bash(.venv/Scripts/python.exe -m pytest --cov=rentals_assistant --cov-report=term-missing)",
+      "Bash(.venv/Scripts/python.exe -m pytest)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\yuber\\OneDrive\\Documents\\Dev\\rentals-assistant\\rentals_assistant\\scrapers"
+    ]
+  }
+}

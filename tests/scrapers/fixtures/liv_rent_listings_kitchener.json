@@ -1,0 +1,60 @@
+{
+  "data": {
+    "listSearch": {
+      "listings": {
+        "metadata": {"total_count": 3, "page": 1, "page_size": 100},
+        "feed": [
+          {
+            "listing_id": 100001,
+            "city": "Kitchener",
+            "state": "ON",
+            "bedrooms": 2,
+            "price": 1850,
+            "price_frequency": "monthly",
+            "full_street_name": "123 Main St",
+            "building_name": "The Grand Apartments",
+            "building_type": "highrise",
+            "unit_type_txt_id": "CONDO",
+            "utilities": [
+              {"name": "Heat", "type": "included", "txt_id": "heat"},
+              {"name": "Water", "type": "included", "txt_id": "water"}
+            ],
+            "features": [
+              {"name": "In Suite Washer", "type": "private", "txt_id": "washer"},
+              {"name": "In Suite Dryer", "type": "private", "txt_id": "dryer"},
+              {"name": "Balcony", "type": "private", "txt_id": "balcony"}
+            ]
+          },
+          {
+            "listing_id": 100002,
+            "city": "Kitchener",
+            "state": "ON",
+            "bedrooms": 2,
+            "price": 1750,
+            "price_frequency": "monthly",
+            "full_street_name": "456 King St",
+            "building_name": "King St Rentals",
+            "building_type": "house",
+            "unit_type_txt_id": "HOUSE",
+            "utilities": [],
+            "features": []
+          },
+          {
+            "listing_id": 100003,
+            "city": "Kitchener",
+            "state": "ON",
+            "bedrooms": 2,
+            "price": 2000,
+            "price_frequency": "daily",
+            "full_street_name": "789 Queen St",
+            "building_name": "Queen Tower",
+            "building_type": "highrise",
+            "unit_type_txt_id": "CONDO",
+            "utilities": [],
+            "features": []
+          }
+        ]
+      }
+    }
+  }
+}
