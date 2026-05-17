@@ -7,6 +7,7 @@ from apscheduler.triggers.cron import CronTrigger
 from rentals_assistant import pipeline
 from rentals_assistant.config import load_config
 from rentals_assistant.notifier import send_alert
+from rentals_assistant.scrapers import build_scrapers
 from rentals_assistant.store import Store
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ def log_next_fire_times(scheduler) -> None:
 
 def start() -> None:
     config = load_config()
-    scrapers = []
+    scrapers = build_scrapers()
     store = Store("listings.db")
     scheduler = build_scheduler(config, scrapers, store, send_alert)
     log_next_fire_times(scheduler)
