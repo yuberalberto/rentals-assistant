@@ -3,6 +3,7 @@ import re
 
 from bs4 import BeautifulSoup
 
+from rentals_assistant.http import create_client
 from rentals_assistant.models import RawListing
 from rentals_assistant.scrapers.base import Scraper
 from rentals_assistant.scrapers.parsers import (
@@ -19,6 +20,15 @@ logger = logging.getLogger(__name__)
 _CITIES = ["Kitchener", "Cambridge", "Waterloo"]
 _BASE = "https://www.viewit.ca/Listings?City={city}&Rooms=2"
 
+_VIEWIT_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+}
+
 
 class ViewItScraper(Scraper):
     """ViewIt.ca scraper — uses httpx + BeautifulSoup.
@@ -28,20 +38,7 @@ class ViewItScraper(Scraper):
     """
 
     def __init__(self, client=None) -> None:
-        import httpx
-
-        self._client = client or httpx.AsyncClient(
-            headers={
-                "User-Agent": (
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/124.0.0.0 Safari/537.36"
-                ),
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            },
-            timeout=30,
-            follow_redirects=True,
-        )
+        self._client = client or create_client(headers=_VIEWIT_HEADERS, timeout=30)
 
     async def fetch(self) -> list[RawListing]:
         listings: list[RawListing] = []

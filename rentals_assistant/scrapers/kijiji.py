@@ -3,6 +3,7 @@ import re
 
 from playwright.async_api import Page, async_playwright
 
+from rentals_assistant.http import create_client  # noqa: F401
 from rentals_assistant.models import RawListing
 from rentals_assistant.scrapers.base import Scraper
 

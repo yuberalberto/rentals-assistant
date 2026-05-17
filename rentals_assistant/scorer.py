@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import List
 
 PROXIMITY_CITIES = {"cambridge", "south kitchener"}
 
@@ -11,7 +12,7 @@ TIER_CHECK = "check"
 class ScoringResult:
     score: int
     tier: str
-    flags: list[str] = field(default_factory=list)
+    flags: List[str] = field(default_factory=list)
 
 
 def _assign_tier(score: int) -> str:
@@ -24,7 +25,7 @@ def _assign_tier(score: int) -> str:
 
 def score_listing(listing: dict) -> ScoringResult:
     points = 0
-    flags: list[str] = []
+    flags: List[str] = []
 
     if listing.get("utilities") == "included":
         points += 1

@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -166,69 +166,86 @@ class TestFormatMessageUrl:
         assert "https://kijiji.ca/v/test-123" in msg
 
 
+def _mock_httpx_post(response):
+    client = MagicMock()
+    client.post = AsyncMock(return_value=response)
+    cm = MagicMock()
+    cm.__aenter__ = AsyncMock(return_value=client)
+    cm.__aexit__ = AsyncMock(return_value=None)
+    return patch("httpx.AsyncClient", return_value=cm)
+
+
 class TestSendAlert:
-    def test_returns_true_on_200(self):
+    async def test_returns_true_on_200(self):
         mock_resp = MagicMock()
-        mock_resp.raise_for_status.return_value = None
-        with patch("httpx.post", return_value=mock_resp) as mock_post:
-            result = send_alert(_listing(), _perfect_result(), settings=_fake_settings())
+        mock_resp.raise_for_status = MagicMock()
+        with _mock_httpx_post(mock_resp) as mock_cm:
+            result = await send_alert(_listing(), _perfect_result(), settings=_fake_settings())
         assert result is True
-        mock_post.assert_called_once()
+        mock_cm.assert_called_once()
 
-    def test_returns_false_on_http_error(self):
+    async def test_returns_false_on_http_error(self):
         mock_resp = MagicMock()
-        mock_resp.raise_for_status.side_effect = Exception("400 Bad Request")
-        with patch("httpx.post", return_value=mock_resp):
-            result = send_alert(_listing(), _perfect_result(), settings=_fake_settings())
+        mock_resp.raise_for_status = MagicMock(side_effect=Exception("400 Bad Request"))
+        with _mock_httpx_post(mock_resp):
+            result = await send_alert(_listing(), _perfect_result(), settings=_fake_settings())
         assert result is False
 
-    def test_returns_false_on_network_exception(self):
-        with patch("httpx.post", side_effect=OSError("network unreachable")):
-            result = send_alert(_listing(), _perfect_result(), settings=_fake_settings())
+    async def test_returns_false_on_network_exception(self):
+        cm = MagicMock()
+        cm.__aenter__ = AsyncMock(side_effect=OSError("network unreachable"))
+        cm.__aexit__ = AsyncMock(return_value=None)
+        with patch("httpx.AsyncClient", return_value=cm):
+            result = await send_alert(_listing(), _perfect_result(), settings=_fake_settings())
         assert result is False
 
-    def test_no_exception_propagates_on_any_failure(self):
-        with patch("httpx.post", side_effect=RuntimeError("unexpected boom")):
-            result = send_alert(_listing(), _perfect_result(), settings=_fake_settings())
+    async def test_no_exception_propagates_on_any_failure(self):
+        cm = MagicMock()
+        cm.__aenter__ = AsyncMock(side_effect=RuntimeError("unexpected boom"))
+        cm.__aexit__ = AsyncMock(return_value=None)
+        with patch("httpx.AsyncClient", return_value=cm):
+            result = await send_alert(_listing(), _perfect_result(), settings=_fake_settings())
         assert result is False
 
-    def test_posts_to_telegram_send_message_url(self):
+    async def test_posts_to_telegram_send_message_url(self):
         mock_resp = MagicMock()
-        mock_resp.raise_for_status.return_value = None
-        with patch("httpx.post", return_value=mock_resp) as mock_post:
-            send_alert(_listing(), _perfect_result(), settings=_fake_settings())
-        call_url = mock_post.call_args[0][0]
+        mock_resp.raise_for_status = MagicMock()
+        with _mock_httpx_post(mock_resp) as mock_cm:
+            await send_alert(_listing(), _perfect_result(), settings=_fake_settings())
+        client = await mock_cm.return_value.__aenter__()
+        call_url = client.post.call_args[0][0]
         assert "api.telegram.org" in call_url
         assert "sendMessage" in call_url
         assert "fake-token" in call_url
 
-    def test_sends_to_correct_chat_id(self):
+    async def test_sends_to_correct_chat_id(self):
         mock_resp = MagicMock()
-        mock_resp.raise_for_status.return_value = None
-        with patch("httpx.post", return_value=mock_resp) as mock_post:
-            send_alert(_listing(), _perfect_result(), settings=_fake_settings())
-        payload = mock_post.call_args[1]["json"]
+        mock_resp.raise_for_status = MagicMock()
+        with _mock_httpx_post(mock_resp) as mock_cm:
+            await send_alert(_listing(), _perfect_result(), settings=_fake_settings())
+        client = await mock_cm.return_value.__aenter__()
+        payload = client.post.call_args[1]["json"]
         assert payload["chat_id"] == "999888"
 
 
 class TestConfigErrorPropagation:
-    def test_config_error_propagates_when_settings_is_none(self):
+    async def test_config_error_propagates_when_settings_is_none(self):
         with patch(
             "rentals_assistant.notifier.load_config",
             side_effect=ConfigError("missing TELEGRAM_TOKEN"),
         ), pytest.raises(ConfigError):
-            send_alert(_listing(), _perfect_result(), settings=None)
+            await send_alert(_listing(), _perfect_result(), settings=None)
 
-    def test_no_config_error_when_settings_provided(self):
+    async def test_no_config_error_when_settings_provided(self):
         mock_resp = MagicMock()
-        mock_resp.raise_for_status.return_value = None
-        with patch("httpx.post", return_value=mock_resp):
-            result = send_alert(_listing(), _perfect_result(), settings=_fake_settings())
+        mock_resp.raise_for_status = MagicMock()
+        with _mock_httpx_post(mock_resp):
+            result = await send_alert(_listing(), _perfect_result(), settings=_fake_settings())
         assert result is True
 
 
 @pytest.mark.integration
-def test_integration_sends_real_telegram_message():
+async def test_integration_sends_real_telegram_message():
     """Sends a real Telegram message. Requires TELEGRAM_TOKEN and TELEGRAM_CHAT_ID in .env."""
     from rentals_assistant.config import load_config
 
@@ -239,4 +256,136 @@ def test_integration_sends_real_telegram_message():
 
     listing = _listing()
     result = _perfect_result()
-    assert send_alert(listing, result, settings=settings) is True
+    assert await send_alert(listing, result, settings=settings) is True
+
+
+# ---------------------------------------------------------------------------
+# TASK-105: send_summary
+# ---------------------------------------------------------------------------
+
+class TestSendSummary:
+    async def test_sends_when_scraper_failed(self):
+        from rentals_assistant.pipeline import RunResult
+        from rentals_assistant.notifier import send_summary
+
+        result = RunResult(
+            scrapers_ok=2,
+            scrapers_failed=1,
+            listings_found=5,
+            listings_new=2,
+            listings_notified=1,
+            listings_rejected=1,
+        )
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock()
+        with _mock_httpx_post(mock_resp) as mock_cm:
+            sent = await send_summary(result, settings=_fake_settings())
+        assert sent is True
+        mock_cm.assert_called_once()
+
+    async def test_skips_when_all_ok_and_log_level_info(self):
+        from rentals_assistant.pipeline import RunResult
+        from rentals_assistant.notifier import send_summary
+
+        result = RunResult(
+            scrapers_ok=3,
+            scrapers_failed=0,
+            listings_found=5,
+            listings_new=2,
+            listings_notified=2,
+            listings_rejected=0,
+        )
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock()
+        with _mock_httpx_post(mock_resp) as mock_cm:
+            sent = await send_summary(result, settings=_fake_settings())
+        assert sent is False
+        mock_cm.assert_not_called()
+
+    async def test_sends_when_debug_level_even_if_all_ok(self):
+        from rentals_assistant.pipeline import RunResult
+        from rentals_assistant.notifier import send_summary
+
+        result = RunResult(
+            scrapers_ok=3,
+            scrapers_failed=0,
+            listings_found=5,
+            listings_new=2,
+            listings_notified=2,
+            listings_rejected=0,
+        )
+        settings = Settings(
+            telegram_token="fake-token",
+            telegram_chat_id="999888",
+            log_level="DEBUG",
+        )
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock()
+        with _mock_httpx_post(mock_resp) as mock_cm:
+            sent = await send_summary(result, settings=settings)
+        assert sent is True
+        mock_cm.assert_called_once()
+
+    async def test_message_contains_status_and_counts(self):
+        from rentals_assistant.pipeline import RunResult
+        from rentals_assistant.notifier import send_summary
+
+        result = RunResult(
+            scrapers_ok=2,
+            scrapers_failed=1,
+            listings_found=5,
+            listings_new=2,
+            listings_notified=1,
+            listings_rejected=1,
+        )
+        settings = _fake_settings()
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock()
+        with _mock_httpx_post(mock_resp) as mock_cm:
+            await send_summary(result, settings=settings)
+        client = await mock_cm.return_value.__aenter__()
+        payload = client.post.call_args[1]["json"]
+        text = payload["text"]
+        assert "2 OK" in text
+        assert "1 failed" in text
+        assert "5 found" in text
+        assert "2 new" in text
+        assert "1 notified" in text
+        assert "1 rejected" in text
+
+    async def test_returns_false_on_http_error(self):
+        from rentals_assistant.pipeline import RunResult
+        from rentals_assistant.notifier import send_summary
+
+        result = RunResult(
+            scrapers_ok=1,
+            scrapers_failed=1,
+            listings_found=0,
+            listings_new=0,
+            listings_notified=0,
+            listings_rejected=0,
+        )
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock(side_effect=Exception("500"))
+        with _mock_httpx_post(mock_resp):
+            sent = await send_summary(result, settings=_fake_settings())
+        assert sent is False
+
+    async def test_config_error_propagates_when_settings_is_none(self):
+        from rentals_assistant.config import ConfigError
+        from rentals_assistant.pipeline import RunResult
+        from rentals_assistant.notifier import send_summary
+
+        result = RunResult(
+            scrapers_ok=1,
+            scrapers_failed=1,
+            listings_found=0,
+            listings_new=0,
+            listings_notified=0,
+            listings_rejected=0,
+        )
+        with patch(
+            "rentals_assistant.notifier.load_config",
+            side_effect=ConfigError("missing TELEGRAM_TOKEN"),
+        ), pytest.raises(ConfigError):
+            await send_summary(result, settings=None)

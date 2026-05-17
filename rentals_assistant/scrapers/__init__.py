@@ -1,1 +1,1 @@
-
+from rentals_assistant.scrapers.registry import build_scrapers

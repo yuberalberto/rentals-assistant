@@ -1,6 +1,7 @@
 import httpx
 from bs4 import BeautifulSoup
 
+from ..http import create_client, fetch_with_delay
 from ..models import RawListing
 from .base import Scraper
 from .parsers import (
@@ -20,15 +21,17 @@ _BASE_URL = "https://rentals.ca/{city}?beds-min=2&beds-max=2"
 
 class RentalsCaScraper(Scraper):
     def __init__(self, client: httpx.AsyncClient | None = None) -> None:
-        self._client = client or httpx.AsyncClient(
-            headers={"User-Agent": "Mozilla/5.0 (compatible; rentals-assistant/1.0)"},
-            timeout=30,
-        )
+        self._client = client or create_client(timeout=30)
 
     async def fetch(self) -> list[RawListing]:
         listings: list[RawListing] = []
         for city in _CITIES:
-            response = await self._client.get(_BASE_URL.format(city=city))
+            response = await fetch_with_delay(
+                self._client,
+                _BASE_URL.format(city=city),
+                min_delay=1.0,
+                max_delay=3.0,
+            )
             response.raise_for_status()
             listings.extend(self._parse(response.text, city))
         return listings

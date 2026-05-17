@@ -3,6 +3,7 @@ import logging
 import httpx
 from bs4 import BeautifulSoup
 
+from ..http import create_client
 from ..models import RawListing
 from .base import Scraper
 from .parsers import parse_floor_level, parse_price
@@ -16,10 +17,7 @@ _SEARCH_URL = "https://activa.ca/whats-available/?post_types=rental"
 
 class ActivaScraper(Scraper):
     def __init__(self, client: httpx.AsyncClient | None = None) -> None:
-        self._client = client or httpx.AsyncClient(
-            headers={"User-Agent": "Mozilla/5.0 (compatible; rentals-assistant/1.0)"},
-            timeout=30,
-        )
+        self._client = client or create_client(timeout=30)
 
     async def fetch(self) -> list[RawListing]:
         response = await self._client.get(_SEARCH_URL)

@@ -2,6 +2,7 @@ import logging
 
 import httpx
 
+from ..http import create_client
 from ..models import RawListing
 from .base import Scraper
 
@@ -24,10 +25,7 @@ _KW_CITIES = {"kitchener", "waterloo", "cambridge"}
 
 class KwPropertyScraper(Scraper):
     def __init__(self, client: httpx.AsyncClient | None = None) -> None:
-        self._client = client or httpx.AsyncClient(
-            headers={"User-Agent": "Mozilla/5.0 (compatible; rentals-assistant/1.0)"},
-            timeout=30,
-        )
+        self._client = client or create_client(timeout=30)
 
     async def fetch(self) -> list[RawListing]:
         response = await self._client.get(_API_URL)

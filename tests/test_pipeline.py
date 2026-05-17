@@ -1,5 +1,7 @@
 """Tests for pipeline.py — scrape → filter → score → dedupe → notify."""
+import asyncio
 import hashlib
+from typing import List
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -45,7 +47,7 @@ def _make_listing(
     )
 
 
-def _make_scraper(listings: list[RawListing]):
+def _make_scraper(listings: List[RawListing]):
     scraper = MagicMock()
     scraper.fetch = AsyncMock(return_value=listings)
     return scraper
@@ -125,7 +127,7 @@ async def test_rejected_listing_does_not_trigger_notifier(store):
 async def test_new_passing_listing_triggers_notification(store):
     listing = _make_listing()
     scraper = _make_scraper([listing])
-    notifier = MagicMock(return_value=True)
+    notifier = AsyncMock(return_value=True)
 
     await run([scraper], store, notifier=notifier)
 
@@ -138,7 +140,7 @@ async def test_new_passing_listing_marked_notified_after_alert(store):
     listing = _make_listing()
     scraper = _make_scraper([listing])
 
-    await run([scraper], store, notifier=MagicMock(return_value=True))
+    await run([scraper], store, notifier=AsyncMock(return_value=True))
 
     listing_id = make_listing_id(listing.source, listing.external_id)
     cur = store._conn.execute(
@@ -186,7 +188,7 @@ async def test_passing_listing_saved_with_score_and_tier(store):
     )
     scraper = _make_scraper([listing])
 
-    await run([scraper], store, notifier=MagicMock(return_value=True))
+    await run([scraper], store, notifier=AsyncMock(return_value=True))
 
     listing_id = make_listing_id(listing.source, listing.external_id)
     cur = store._conn.execute(
@@ -207,7 +209,7 @@ async def test_scraper_exception_does_not_abort_run(store):
 
     good_listing = _make_listing()
     good = _make_scraper([good_listing])
-    notifier = MagicMock(return_value=True)
+    notifier = AsyncMock(return_value=True)
 
     await run([failing, good], store, notifier=notifier)  # must not raise
 
@@ -256,7 +258,7 @@ async def test_end_to_end_mixed_listings(store):
     })
 
     scraper = _make_scraper([passing_new, rejected, passing_existing])
-    notifier = MagicMock(return_value=True)
+    notifier = AsyncMock(return_value=True)
 
     await run([scraper], store, notifier=notifier)
 
@@ -270,3 +272,194 @@ async def test_end_to_end_mixed_listings(store):
     row = cur.fetchone()
     assert row[0] is None
     assert row[1] == 0
+
+
+# ---------------------------------------------------------------------------
+# TASK-104: Concurrent scraper execution with semaphore
+# ---------------------------------------------------------------------------
+
+async def test_concurrent_execution_with_semaphore(store):
+    """Verify scrapers run concurrently when max_concurrent_scrapers > 1."""
+    scraper_a = _make_scraper([])
+    scraper_a.__class__.__name__ = "ScraperA"
+
+    scraper_b = _make_scraper([])
+    scraper_b.__class__.__name__ = "ScraperB"
+
+    scraper_c = _make_scraper([])
+    scraper_c.__class__.__name__ = "ScraperC"
+
+    from rentals_assistant.config import Settings
+    settings = Settings(
+        telegram_token="test",
+        telegram_chat_id="test",
+        max_concurrent_scrapers=3
+    )
+
+    await run([scraper_a, scraper_b, scraper_c], store, notifier=AsyncMock(), settings=settings)
+
+    # All scrapers should have been called
+    scraper_a.fetch.assert_called_once()
+    scraper_b.fetch.assert_called_once()
+    scraper_c.fetch.assert_called_once()
+
+
+async def test_semaphore_one_forces_sequential_execution(store):
+    """Verify semaphore=1 forces sequential behavior."""
+    scraper_a = _make_scraper([])
+    scraper_a.__class__.__name__ = "ScraperA"
+
+    scraper_b = _make_scraper([])
+    scraper_b.__class__.__name__ = "ScraperB"
+
+    from rentals_assistant.config import Settings
+    settings = Settings(
+        telegram_token="test",
+        telegram_chat_id="test",
+        max_concurrent_scrapers=1
+    )
+
+    await run([scraper_a, scraper_b], store, notifier=AsyncMock(), settings=settings)
+
+    # Both scrapers should have been called sequentially
+    scraper_a.fetch.assert_called_once()
+    scraper_b.fetch.assert_called_once()
+
+
+async def test_concurrent_failure_does_not_cancel_others(store):
+    """Verify a failing scraper doesn't cancel others in concurrent execution."""
+    failing = MagicMock()
+    failing.__class__.__name__ = "FailingScraper"
+    failing.fetch = AsyncMock(side_effect=RuntimeError("network error"))
+
+    good_a = _make_scraper([_make_listing(external_id="good-a-001")])
+    good_a.__class__.__name__ = "GoodA"
+
+    good_b = _make_scraper([_make_listing(external_id="good-b-001")])
+    good_b.__class__.__name__ = "GoodB"
+
+    from rentals_assistant.config import Settings
+    settings = Settings(
+        telegram_token="test",
+        telegram_chat_id="test",
+        max_concurrent_scrapers=3
+    )
+
+    notifier = AsyncMock(return_value=True)
+    await run([failing, good_a, good_b], store, notifier=notifier, settings=settings)
+
+    # All scrapers should have been attempted
+    failing.fetch.assert_called_once()
+    good_a.fetch.assert_called_once()
+    good_b.fetch.assert_called_once()
+
+    # Notifier should have been called for the good scrapers (2 listings)
+    assert notifier.call_count == 2
+
+
+# ---------------------------------------------------------------------------
+# TASK-105: RunResult with structured error reporting
+# ---------------------------------------------------------------------------
+
+async def test_run_returns_run_result(store):
+    """pipeline.run() must return a RunResult dataclass."""
+    from rentals_assistant.pipeline import RunResult
+
+    listing = _make_listing()
+    scraper = _make_scraper([listing])
+    notifier = AsyncMock(return_value=True)
+
+    result = await run([scraper], store, notifier=notifier)
+
+    assert isinstance(result, RunResult)
+
+
+async def test_run_result_counts_all_listings(store):
+    """RunResult must track found, new, notified, rejected."""
+    new_passing = _make_listing(external_id="new-001")
+    rejected = _make_listing(external_id="bad-001", price_cad=9999)
+    existing = _make_listing(external_id="old-001")
+
+    existing_id = make_listing_id(existing.source, existing.external_id)
+    store.save({
+        "id": existing_id,
+        "source": existing.source,
+        "external_id": existing.external_id,
+        "url": existing.url,
+        "title": existing.title,
+        "price_cad": existing.price_cad,
+        "bedrooms": existing.bedrooms,
+        "city": existing.city,
+        "floor_level": existing.floor_level,
+        "laundry_inunit": existing.laundry_inunit,
+        "outdoor_space": existing.outdoor_space,
+        "parking_spots": existing.parking_spots,
+        "pets": existing.pets,
+        "utilities": existing.utilities,
+        "score": 3,
+        "tier": "strong",
+        "notified": 1,
+    })
+
+    scraper = _make_scraper([new_passing, rejected, existing])
+    notifier = AsyncMock(return_value=True)
+
+    result = await run([scraper], store, notifier=notifier)
+
+    assert result.scrapers_ok == 1
+    assert result.scrapers_failed == 0
+    assert result.listings_found == 3
+    assert result.listings_new == 1
+    assert result.listings_notified == 1
+    assert result.listings_rejected == 1
+
+
+async def test_run_result_tracks_scraper_failures(store):
+    """RunResult must count failed scrapers and still count listings from ok ones."""
+    from rentals_assistant.pipeline import RunResult
+
+    failing = MagicMock()
+    failing.__class__.__name__ = "FailingScraper"
+    failing.fetch = AsyncMock(side_effect=RuntimeError("boom"))
+
+    good = _make_scraper([_make_listing(external_id="good-001")])
+
+    notifier = AsyncMock(return_value=True)
+    result = await run([failing, good], store, notifier=notifier)
+
+    assert isinstance(result, RunResult)
+    assert result.scrapers_ok == 1
+    assert result.scrapers_failed == 1
+    assert result.listings_found == 1
+    assert result.listings_new == 1
+    assert result.listings_notified == 1
+    assert result.listings_rejected == 0
+
+
+async def test_run_result_zero_when_no_scrapers(store):
+    """RunResult must be all zeros when no scrapers are provided."""
+    from rentals_assistant.pipeline import RunResult
+
+    result = await run([], store, notifier=MagicMock())
+
+    assert isinstance(result, RunResult)
+    assert result.scrapers_ok == 0
+    assert result.scrapers_failed == 0
+    assert result.listings_found == 0
+    assert result.listings_new == 0
+    assert result.listings_notified == 0
+    assert result.listings_rejected == 0
+
+
+async def test_run_result_counts_rejected_not_notified(store):
+    """Rejected listings are found but not new/notified."""
+    rejected = _make_listing(external_id="rej-001", price_cad=9999)
+    scraper = _make_scraper([rejected])
+    notifier = AsyncMock(return_value=True)
+
+    result = await run([scraper], store, notifier=notifier)
+
+    assert result.listings_found == 1
+    assert result.listings_new == 0
+    assert result.listings_notified == 0
+    assert result.listings_rejected == 1

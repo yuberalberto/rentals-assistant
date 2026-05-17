@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 
 import httpx
 
+from rentals_assistant.http import create_client
 from rentals_assistant.models import RawListing
 from rentals_assistant.scrapers.base import Scraper
 from rentals_assistant.scrapers.parsers import (
@@ -18,6 +19,14 @@ from rentals_assistant.scrapers.parsers import (
 logger = logging.getLogger(__name__)
 
 _RSS_URL = "https://hamilton.craigslist.org/search/apa?format=rss&query=2+bedroom"
+
+_CRAIGSLIST_UA = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+}
 
 # RSS 1.0 / RDF namespaces used by Craigslist
 _NS_RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -34,17 +43,7 @@ class CraigslistScraper(Scraper):
     """
 
     def __init__(self, client: httpx.AsyncClient | None = None) -> None:
-        self._client = client or httpx.AsyncClient(
-            headers={
-                "User-Agent": (
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/124.0.0.0 Safari/537.36"
-                ),
-            },
-            timeout=30,
-            follow_redirects=True,
-        )
+        self._client = client or create_client(headers=_CRAIGSLIST_UA, timeout=30)
 
     async def fetch(self) -> list[RawListing]:
         response = await self._client.get(_RSS_URL)

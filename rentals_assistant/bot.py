@@ -6,7 +6,8 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 
 from rentals_assistant import pipeline
 from rentals_assistant.config import load_config
-from rentals_assistant.notifier import send_alert
+from rentals_assistant.notifier import send_alert, send_summary
+from rentals_assistant.scrapers import build_scrapers
 from rentals_assistant.store import Store
 
 logger = logging.getLogger(__name__)
@@ -25,7 +26,9 @@ async def _handle_run(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     await update.message.reply_text("Scanning... 🔍")
     async with _pipeline_lock:
         store = Store("listings.db")
-        await pipeline.run(scrapers=[], store=store, notifier=send_alert)
+        scrapers = build_scrapers()
+        result = await pipeline.run(scrapers=scrapers, store=store, notifier=send_alert)
+        await send_summary(result)
 
 
 def build_application(token: str) -> Application:
