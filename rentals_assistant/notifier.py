@@ -33,7 +33,14 @@ def format_message(listing: RawListing, result: ScoringResult) -> str:
 
     price_str = f"${listing.price_cad:,}/mo" if listing.price_cad is not None else "price ?"
     utils_flag = " ★ utilities incl." if "★" in result.flags else ""
-    price_line = f"2BR · {price_str}{utils_flag}"
+    
+    # Add bathrooms if available, format whole numbers without decimal
+    if listing.bathrooms is not None:
+        bathrooms_val = listing.bathrooms if listing.bathrooms % 1 != 0 else int(listing.bathrooms)
+        bathrooms_str = f" · {bathrooms_val}BA"
+    else:
+        bathrooms_str = ""
+    price_line = f"2BR{bathrooms_str} · {price_str}{utils_flag}"
 
     location_flags = [f for f in result.flags if f != "★"]
     city_str = listing.city or "Unknown city"
@@ -41,6 +48,11 @@ def format_message(listing: RawListing, result: ScoringResult) -> str:
     location_line = " · ".join(location_parts)
 
     lines = [header, price_line, location_line]
+
+    # Add truncated description if available
+    if listing.description:
+        truncated = listing.description[:100] if len(listing.description) > 100 else listing.description
+        lines.append(truncated)
 
     pets_line = _PETS_LINE.get(listing.pets or "")
     if pets_line:

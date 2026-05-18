@@ -3,6 +3,7 @@ import hashlib
 import logging
 from dataclasses import dataclass
 
+from rentals_assistant.enrichment import enrich, validate
 from rentals_assistant.filters import passes_hard_filters
 from rentals_assistant.scorer import score_listing
 from rentals_assistant.store import Store
@@ -40,16 +41,21 @@ def _listing_to_record(listing_id: str, listing) -> dict:
         "outdoor_space": listing.outdoor_space,
         "parking_spots": listing.parking_spots,
         "pets": listing.pets,
+        "description": listing.description,
+        "bathrooms": listing.bathrooms,
     }
 
 
 async def run(scrapers, store: Store, notifier, settings=None) -> RunResult:
-    """Scrape → filter → score → dedupe → notify.
+    """Scrape → enrich → validate → hard_filters → score → tier_gate → dedupe → notify.
 
     * Calls every scraper concurrently.
+    * Enrichment fills missing fields from title+description.
+    * Validation rejects listings without price.
     * Hard-filter rejections are persisted with ``tier=None`` and
       ``notified=0`` for audit.
-    * Passing listings are scored; only *new* ones trigger the notifier.
+    * Passing listings are scored; tier gate filters by ``settings.min_notify_tier``.
+    * Only *new* listings above the tier threshold trigger the notifier.
     * A scraper that raises is logged and skipped — the run never aborts.
     """
     if settings is None:
@@ -81,18 +87,30 @@ async def run(scrapers, store: Store, notifier, settings=None) -> RunResult:
     listings_notified = 0
     listings_rejected = 0
 
+    tier_order = {"check": 0, "strong": 1, "perfect": 2}
+
     for listing in all_listings:
+        listing = enrich(listing)
         listing_id = make_listing_id(listing.source, listing.external_id)
         is_new = store.is_new(listing_id)
         record = _listing_to_record(listing_id, listing)
 
-        if not passes_hard_filters(listing):
+        if not validate(listing):
+            store.save({**record, "score": None, "tier": None, "notified": 0})
+            listings_rejected += 1
+            continue
+
+        if not passes_hard_filters(listing, settings):
             store.save({**record, "score": None, "tier": None, "notified": 0})
             listings_rejected += 1
             continue
 
         result = score_listing(listing.__dict__)
         store.save({**record, "score": result.score, "tier": result.tier, "notified": 0})
+
+        min_tier = settings.min_notify_tier
+        if tier_order.get(result.tier, 0) < tier_order.get(min_tier, 0):
+            continue
 
         if is_new:
             listings_new += 1

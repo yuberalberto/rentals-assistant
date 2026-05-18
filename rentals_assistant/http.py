@@ -2,9 +2,11 @@ import asyncio
 import logging
 import random
 from collections.abc import Awaitable, Callable
+from functools import partial
 from typing import Any
 
 import httpx
+from curl_cffi import requests as curl_requests
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +115,11 @@ def create_client(
 ) -> httpx.AsyncClient:
     merged_headers: dict[str, str] = {
         "User-Agent": random.choice(_USER_AGENTS),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-CA,en-US;q=0.9,en;q=0.8",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
     }
     if headers:
         merged_headers.update(headers)
@@ -159,3 +166,32 @@ async def fetch_with_delay(
         return await fetch_with_retry(client, method, url, **kwargs)
     # DI path: use client.request() directly (compatible with test mocks)
     return await client.request(method, url, **kwargs)
+
+
+async def fetch_curl(
+    url: str,
+    *,
+    impersonate: str = "chrome",
+    timeout: float = 30.0,
+) -> str:
+    """Fetch URL using curl_cffi to bypass Cloudflare/TLS fingerprint checks.
+
+    Returns the response text. Raises httpx.HTTPStatusError on non-2xx.
+    """
+    loop = asyncio.get_event_loop()
+    response = await loop.run_in_executor(
+        None,
+        partial(
+            curl_requests.get,
+            url,
+            impersonate=impersonate,
+            timeout=timeout,
+        ),
+    )
+    if response.status_code >= 400:
+        raise httpx.HTTPStatusError(
+            f"HTTP {response.status_code} on {url}",
+            request=httpx.Request("GET", url),
+            response=httpx.Response(response.status_code),
+        )
+    return response.text

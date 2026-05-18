@@ -17,3 +17,5 @@ class RawListing:
     parking_spots: Optional[int] = None     # 0, 1, 2, … | None (unknown)
     pets: Optional[str] = None              # "cats_confirmed" | "allowed" | "not_allowed" | "unknown"
     utilities: Optional[str] = None         # "included" | "extra" | "unknown"
+    description: Optional[str] = None
+    bathrooms: Optional[float] = None

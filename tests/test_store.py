@@ -18,6 +18,8 @@ SAMPLE_LISTING = {
     "outdoor_space": 1,
     "parking_spots": 1,
     "pets": "cats_confirmed",
+    "description": "Spacious apartment with balcony and modern kitchen",
+    "bathrooms": 1.5,
     "score": 3,
     "tier": "strong",
     "notified": 0,
@@ -56,8 +58,8 @@ def test_schema_has_all_required_columns(db_path):
     expected = {
         "id", "source", "external_id", "url", "title", "price_cad",
         "utilities", "bedrooms", "city", "floor_level", "outdoor_space",
-        "parking_spots", "pets", "score", "tier", "first_seen", "last_seen",
-        "notified",
+        "parking_spots", "pets", "description", "bathrooms",
+        "score", "tier", "first_seen", "last_seen", "notified",
     }
     assert expected <= cols
 
@@ -93,6 +95,8 @@ def test_save_persists_all_fields(store, db_path):
     assert row["outdoor_space"] == 1
     assert row["parking_spots"] == 1
     assert row["pets"] == "cats_confirmed"
+    assert row["description"] == "Spacious apartment with balcony and modern kitchen"
+    assert row["bathrooms"] == 1.5
     assert row["notified"] == 0
 
 
@@ -204,3 +208,198 @@ def test_multiple_listings_stored_independently(store):
     assert store.is_new("aaa") is False
     assert store.is_new("bbb") is False
     assert store.is_new("ccc") is True
+
+
+def test_description_and_bathrooms_round_trip(store, db_path):
+    listing = {
+        "id": "roundtrip-001",
+        "source": "kijiji",
+        "external_id": "ext-999",
+        "url": "https://example.com/123",
+        "title": "Test Listing",
+        "price_cad": 2000,
+        "utilities": "unknown",
+        "bedrooms": 2,
+        "city": "Kitchener",
+        "floor_level": "main",
+        "outdoor_space": None,
+        "parking_spots": None,
+        "pets": "unknown",
+        "description": "Beautiful apartment with great views",
+        "bathrooms": 2.0,
+        "score": 5,
+        "tier": "strong",
+        "notified": 0,
+    }
+    store.save(listing)
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    row = conn.execute(
+        "SELECT description, bathrooms FROM listings WHERE id = ?", ("roundtrip-001",)
+    ).fetchone()
+    conn.close()
+    assert row["description"] == "Beautiful apartment with great views"
+    assert row["bathrooms"] == 2.0
+
+
+def test_migration_adds_description_and_bathrooms(db_path):
+    # Create a DB without the new columns (simulating old schema)
+    old_create = """
+    CREATE TABLE IF NOT EXISTS listings (
+        id            TEXT PRIMARY KEY,
+        source        TEXT,
+        external_id   TEXT,
+        url           TEXT,
+        title         TEXT,
+        price_cad     INTEGER,
+        utilities     TEXT,
+        bedrooms      INTEGER,
+        city          TEXT,
+        floor_level   TEXT,
+        laundry_inunit INTEGER,
+        outdoor_space INTEGER,
+        parking_spots INTEGER,
+        pets          TEXT,
+        score         INTEGER,
+        tier          TEXT,
+        first_seen    DATETIME NOT NULL,
+        last_seen     DATETIME NOT NULL,
+        notified      INTEGER NOT NULL DEFAULT 0
+    )
+    """
+    conn = sqlite3.connect(db_path)
+    conn.execute(old_create)
+    conn.close()
+
+    # Now Store should migrate
+    store = Store(db_path)
+
+    # Verify columns exist
+    conn = sqlite3.connect(db_path)
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(listings)")}
+    conn.close()
+    assert "description" in cols
+    assert "bathrooms" in cols
+
+    store.close()
+
+
+def test_description_and_bathrooms_none_values(store, db_path):
+    listing = {
+        "id": "none-test",
+        "source": "kijiji",
+        "external_id": "ext-none",
+        "url": "https://example.com/none",
+        "title": "Test None Values",
+        "price_cad": 1500,
+        "utilities": "unknown",
+        "bedrooms": 2,
+        "city": "Waterloo",
+        "floor_level": "unknown",
+        "outdoor_space": None,
+        "parking_spots": None,
+        "pets": "unknown",
+        "description": None,
+        "bathrooms": None,
+        "score": None,
+        "tier": None,
+        "notified": 0,
+    }
+    store.save(listing)
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    row = conn.execute(
+        "SELECT description, bathrooms FROM listings WHERE id = ?", ("none-test",)
+    ).fetchone()
+    conn.close()
+    assert row["description"] is None
+    assert row["bathrooms"] is None
+
+
+def test_description_empty_string(store, db_path):
+    listing = {
+        "id": "empty-desc",
+        "source": "kijiji",
+        "external_id": "ext-empty",
+        "url": "https://example.com/empty",
+        "title": "Test Empty Description",
+        "price_cad": 1600,
+        "utilities": "unknown",
+        "bedrooms": 2,
+        "city": "Kitchener",
+        "floor_level": "unknown",
+        "outdoor_space": None,
+        "parking_spots": None,
+        "pets": "unknown",
+        "description": "",
+        "bathrooms": None,
+        "score": None,
+        "tier": None,
+        "notified": 0,
+    }
+    store.save(listing)
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    row = conn.execute(
+        "SELECT description FROM listings WHERE id = ?", ("empty-desc",)
+    ).fetchone()
+    conn.close()
+    assert row["description"] == ""
+
+
+def test_bathrooms_zero_and_fractional(store, db_path):
+    listing_zero = {
+        "id": "bath-zero",
+        "source": "kijiji",
+        "external_id": "ext-zero",
+        "url": "https://example.com/zero",
+        "title": "Test Zero Bathrooms",
+        "price_cad": 1400,
+        "utilities": "unknown",
+        "bedrooms": 2,
+        "city": "Cambridge",
+        "floor_level": "unknown",
+        "outdoor_space": None,
+        "parking_spots": None,
+        "pets": "unknown",
+        "description": None,
+        "bathrooms": 0.0,
+        "score": None,
+        "tier": None,
+        "notified": 0,
+    }
+    store.save(listing_zero)
+
+    listing_fractional = {
+        "id": "bath-frac",
+        "source": "kijiji",
+        "external_id": "ext-frac",
+        "url": "https://example.com/frac",
+        "title": "Test Fractional Bathrooms",
+        "price_cad": 1700,
+        "utilities": "unknown",
+        "bedrooms": 2,
+        "city": "Cambridge",
+        "floor_level": "unknown",
+        "outdoor_space": None,
+        "parking_spots": None,
+        "pets": "unknown",
+        "description": None,
+        "bathrooms": 2.5,
+        "score": None,
+        "tier": None,
+        "notified": 0,
+    }
+    store.save(listing_fractional)
+
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    row_zero = conn.execute(
+        "SELECT bathrooms FROM listings WHERE id = ?", ("bath-zero",)
+    ).fetchone()
+    row_frac = conn.execute(
+        "SELECT bathrooms FROM listings WHERE id = ?", ("bath-frac",)
+    ).fetchone()
+    conn.close()
+    assert row_zero["bathrooms"] == 0.0
+    assert row_frac["bathrooms"] == 2.5

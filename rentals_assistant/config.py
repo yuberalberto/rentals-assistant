@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     telegram_chat_id: str
     price_min: int = 1400
     price_max: int = 2000
+    bedrooms: int = 2
+    parking_min: int = 1
+    laundry_required: bool = True
+    min_notify_tier: str = "perfect"
     enable_facebook: bool = False
     log_level: str = "INFO"
     tz: str = "America/Toronto"

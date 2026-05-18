@@ -42,9 +42,30 @@ cp .env.example .env
 # Start the scheduler (scrapes at 08:00, 13:00, and 18:00 EST)
 python -m rentals_assistant
 
+# Start the bot (interactive via Telegram commands)
+python -m rentals_assistant --bot
+
 # Or run a single manual scan
 python -c "from rentals_assistant.pipeline import run; run(scrapers, store, notifier)"
 ```
+
+**Bot mode:** When started with `--bot`, the bot listens for Telegram commands via polling. Send `/run` to trigger a manual scan. The bot processes one scan at a time — if a scan is already running, additional `/run` commands will be rejected with "Already scanning, please wait ⏳".
+
+### How to Know if the Bot is Running
+
+**Scheduler mode:**
+- Check if the terminal window is still open — the scheduler runs in the foreground
+- Look for log output showing "Next run: [timestamp]" when it starts
+- If you close the terminal, the scheduler stops
+
+**Bot mode:**
+- Send `/run` in Telegram — if you get "Scanning... 🔍" or "Already scanning, please wait ⏳", the bot is running
+- If you get no response, the bot is not running
+- Note: The bot does not send a startup message yet — this is a planned improvement
+
+**Both modes:**
+- The process dies if you close the terminal or shut down your PC
+- For production deployment, consider running as a background service (systemd, Docker, or Fly.io)
 
 ---
 
@@ -74,9 +95,6 @@ python -c "from rentals_assistant.pipeline import run; run(scrapers, store, noti
 |---|---|---|
 | [Rentals.ca](https://rentals.ca) | `httpx` + BeautifulSoup | Static HTML, broad coverage |
 | [Kijiji](https://kijiji.ca) | Playwright | JS-rendered, no login required |
-| [PadMapper](https://padmapper.com) | `httpx` + BeautifulSoup | Aggregates Kijiji — deduped by canonical URL |
-| [Zumper](https://zumper.com) | `httpx` + JSON API | API-like responses |
-| [ViewIt.ca](https://viewit.ca) | `httpx` + BeautifulSoup | Strong Ontario inventory |
 | [Craigslist](https://hamilton.craigslist.org) | RSS feed | Zero-maintenance RSS parser |
 | [liv.rent](https://liv.rent) | `httpx` + BeautifulSoup | Modern landlords, different pool |
 | [Wilson Blanchard](https://wilsonblanchard.com) | `httpx` + BeautifulSoup | Major KW property manager |
@@ -127,33 +145,39 @@ listings
 
 ### Filter Logic
 
-Hard filters (must pass all):
+Hard filters (must pass all, configurable via `.env`):
 
-| Rule | Value |
-|---|---|
-| Price ceiling | ≤ $2,000 CAD |
-| Bedrooms | Exactly 2 |
-| Floor level | Not basement |
-| Pets | Not `not_allowed` (cats must be confirmed or generic `allowed`) |
-| Laundry | In-unit only (when known) |
-| Parking | ≥ 1 spot (when known) |
+| Rule | Value | Setting |
+|---|---|---|
+| Price range | $1,400 – $2,000 CAD | `PRICE_MIN`, `PRICE_MAX` |
+| Bedrooms | Exactly 2 | `BEDROOMS` |
+| Floor level | Not basement (always) | N/A |
+| Laundry | In-unit only (when known) | `LAUNDRY_REQUIRED` |
+| Parking | ≥ 1 spot (when known) | `PARKING_MIN` |
+| Pets | Scoring only (moved from hard filter) | N/A |
+| Utilities | Scoring only (moved from hard filter) | N/A |
 
-Soft scoring (0–4 points):
+**Tier gate:** Only notify listings above `MIN_NOTIFY_TIER` (default: `perfect`, options: `perfect`, `strong`, `check`)
+
+Soft scoring (0–7 points):
 
 | Criterion | Points |
 |---|---|
 | Utilities included | +1 |
-| Upper floor | +1 |
+| Upper/main floor | +1 |
 | Outdoor space (balcony/yard) | +1 |
 | Parking ≥ 2 spots | +1 |
+| Pets friendly | +1 |
+| Bathrooms ≥ 1.5 | +1 |
+| Proximity zone (Cambridge/South Kitchener) | +1 |
 
 Tier mapping:
 
 | Score | Tier | Emoji |
 |---|---|---|
-| 4 | Perfect | 🟢 |
-| 2–3 | Strong | 🟡 |
-| 0–1 | Check it | 🔵 |
+| 7 | Perfect | 🟢 |
+| 5–6 | Strong | 🟡 |
+| 0–4 | Check it | 🔵 |
 
 ### Project Structure
 

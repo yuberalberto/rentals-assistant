@@ -1,6 +1,6 @@
 import pytest
 
-from rentals_assistant.scrapers.kijiji import (
+from rentals_assistant.scrapers.parsers import (
     parse_floor_level,
     parse_laundry,
     parse_outdoor_space,
@@ -37,6 +37,11 @@ def test_parse_price_weekly_returns_none():
 
 def test_parse_price_leading_text():
     assert parse_price("Rent: $1,900/mo") == 1900
+
+
+def test_parse_price_bare_dollar():
+    # Bare-dollar fallback (e.g., "Starting from $2,290")
+    assert parse_price("$1,850") == 1850
 
 
 # ---------------------------------------------------------------------------

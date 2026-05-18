@@ -1,36 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
-<head><title>Kitchener Rentals - rentals.ca</title></head>
+<html>
+<head><title>Kitchener Apartments for Rent | rentals.ca</title></head>
 <body>
-<div id="listing-results">
-
-  <article class="listing-card" data-listing-id="111111">
-    <div class="listing-card__details">
-      <h2><a class="listing-card__title" href="/rental/111111-bright-2br-kitchener">Bright 2BR Upper Unit - All Utilities Included</a></h2>
-      <p class="listing-card__price">$1,850/month</p>
-      <p class="listing-card__beds">2 Bed · 1 Bath</p>
-      <p class="listing-card__description">Beautiful upper floor unit. All utilities included. In-suite laundry. Balcony. 2 parking spots. Cats welcome!</p>
-    </div>
-  </article>
-
-  <article class="listing-card" data-listing-id="222222">
-    <div class="listing-card__details">
-      <h2><a class="listing-card__title" href="/rental/222222-2-bedroom-apartment-downtown">2 Bedroom Apartment Downtown</a></h2>
-      <p class="listing-card__price">$1,600/month</p>
-      <p class="listing-card__beds">2 Bed</p>
-      <p class="listing-card__description">Comfortable 2 bedroom apartment. No pets allowed.</p>
-    </div>
-  </article>
-
-  <article class="listing-card" data-listing-id="333333">
-    <div class="listing-card__details">
-      <h2><a class="listing-card__title" href="/rental/333333-spacious-2br-main-floor-yard">Spacious 2BR Main Floor with Yard</a></h2>
-      <p class="listing-card__price">$1,950/month + utilities</p>
-      <p class="listing-card__beds">2 Bed · 2 Bath</p>
-      <p class="listing-card__description">Main floor unit with private yard. In-unit laundry. Pets allowed. 1 parking space.</p>
-    </div>
-  </article>
-
-</div>
+<script>
+AppStartup.push(function() {
+      App.store.search = {
+        response: {"data":{"meta":{"totalCount":3,"totalFloorPlanCount":3,"focusedPlace":{"name":"Kitchener","slug":"kitchener","path":"kitchener"}},"cities":[{"__typename":"City","id":"Y2l0eTo1OTkyOTk2","path":"kitchener","regionCode":"ON","cityName":"Kitchener","cityLocation":[-80.5112,43.42537],"citySlug":"kitchener"}],"pageInfo":{"hasNextPage":false},"edges":[{"node":{"__typename":"RentalListing","id":"111111","path":"kitchener/bright-2br-upper","rentalListingName":"Bright 2BR Upper Unit","address":{"street":"100 King St","city":{"__typename":"City","id":"c1","path":"kitchener","regionCode":"ON","cityName":"Kitchener","citySlug":"kitchener"}},"rentRange":[1850.0,1850.0],"bedsRange":[2.0,2.0],"bathsRange":[1.0,1.0],"sizeRange":[900.0,900.0]}},{"node":{"__typename":"RentalListing","id":"222222","path":"kitchener/downtown-condo","rentalListingName":"Downtown Condo","address":{"street":"200 Queen St","city":{"__typename":"City","id":"c2","path":"kitchener","regionCode":"ON","cityName":"Kitchener","citySlug":"kitchener"}},"rentRange":[1700.0,1700.0],"bedsRange":[2.0,2.0],"bathsRange":[1.0,1.0],"sizeRange":[850.0,850.0]}},{"node":{"__typename":"RentalListing","id":"333333","path":"kitchener/main-level-townhouse","rentalListingName":"Main Level Townhouse","address":{"street":"300 Weber St","city":{"__typename":"City","id":"c3","path":"kitchener","regionCode":"ON","cityName":"Kitchener","citySlug":"kitchener"}},"rentRange":[1950.0,1950.0],"bedsRange":[2.0,2.0],"bathsRange":[1.5,1.5],"sizeRange":[1000.0,1000.0]}}]}},
+      };
+    });
+</script>
 </body>
 </html>

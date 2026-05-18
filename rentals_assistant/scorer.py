@@ -16,9 +16,9 @@ class ScoringResult:
 
 
 def _assign_tier(score: int) -> str:
-    if score == 4:
+    if score == 7:
         return TIER_PERFECT
-    if score >= 2:
+    if score >= 5:
         return TIER_STRONG
     return TIER_CHECK
 
@@ -31,7 +31,7 @@ def score_listing(listing: dict) -> ScoringResult:
         points += 1
         flags.append("★")
 
-    if listing.get("floor_level") == "upper":
+    if listing.get("floor_level") in ("upper", "main"):
         points += 1
         flags.append("🏢")
 
@@ -43,8 +43,17 @@ def score_listing(listing: dict) -> ScoringResult:
         points += 1
         flags.append("🚗")
 
+    if listing.get("pets") in ("allowed", "cats_confirmed"):
+        points += 1
+        flags.append("🐱")
+
+    if (listing.get("bathrooms") or 0) >= 1.5:
+        points += 1
+        flags.append("🚿")
+
     city = (listing.get("city") or "").lower()
     if any(label in city for label in PROXIMITY_CITIES):
+        points += 1
         flags.append("📍")
 
     return ScoringResult(score=points, tier=_assign_tier(points), flags=flags)

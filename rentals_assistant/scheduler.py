@@ -36,10 +36,13 @@ def log_next_fire_times(scheduler) -> None:
 
 
 def start() -> None:
-    config = load_config()
-    scrapers = build_scrapers()
-    store = Store("listings.db")
-    scheduler = build_scheduler(config, scrapers, store, send_alert)
-    log_next_fire_times(scheduler)
-    scheduler.start()
-    asyncio.get_event_loop().run_forever()
+    async def _main():
+        config = load_config()
+        scrapers = build_scrapers()
+        store = Store("listings.db")
+        scheduler = build_scheduler(config, scrapers, store, send_alert)
+        scheduler.start()
+        log_next_fire_times(scheduler)
+        await asyncio.Event().wait()
+
+    asyncio.run(_main())

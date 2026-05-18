@@ -1,5 +1,5 @@
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Union
 
@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS listings (
     outdoor_space INTEGER,
     parking_spots INTEGER,
     pets          TEXT,
+    description   TEXT,
+    bathrooms     REAL,
     score         INTEGER,
     tier          TEXT,
     first_seen    DATETIME NOT NULL,
@@ -31,11 +33,11 @@ _INSERT = """
 INSERT INTO listings (
     id, source, external_id, url, title, price_cad, utilities,
     bedrooms, city, floor_level, laundry_inunit, outdoor_space, parking_spots,
-    pets, score, tier, first_seen, last_seen, notified
+    pets, description, bathrooms, score, tier, first_seen, last_seen, notified
 ) VALUES (
     :id, :source, :external_id, :url, :title, :price_cad, :utilities,
     :bedrooms, :city, :floor_level, :laundry_inunit, :outdoor_space, :parking_spots,
-    :pets, :score, :tier, :first_seen, :last_seen, :notified
+    :pets, :description, :bathrooms, :score, :tier, :first_seen, :last_seen, :notified
 )
 ON CONFLICT(id) DO UPDATE SET last_seen = excluded.last_seen
 """
@@ -46,6 +48,7 @@ class Store:
         self._conn = sqlite3.connect(Path(db_path))
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute(_CREATE_TABLE)
+        self._migrate()
         self._conn.commit()
 
     def is_new(self, listing_id: str) -> bool:
@@ -55,7 +58,7 @@ class Store:
         return cur.fetchone() is None
 
     def save(self, listing: dict) -> None:
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         row = {
             "id": listing["id"],
             "source": listing.get("source"),
@@ -71,6 +74,8 @@ class Store:
             "outdoor_space": listing.get("outdoor_space"),
             "parking_spots": listing.get("parking_spots"),
             "pets": listing.get("pets"),
+            "description": listing.get("description"),
+            "bathrooms": listing.get("bathrooms"),
             "score": listing.get("score"),
             "tier": listing.get("tier"),
             "first_seen": listing.get("first_seen", now),
@@ -88,3 +93,14 @@ class Store:
 
     def close(self) -> None:
         self._conn.close()
+
+    def _migrate(self) -> None:
+        """Add missing columns for schema migrations."""
+        cursor = self._conn.execute("PRAGMA table_info(listings)")
+        existing_cols = {row[1] for row in cursor.fetchall()}
+
+        if "description" not in existing_cols:
+            self._conn.execute("ALTER TABLE listings ADD COLUMN description TEXT")
+
+        if "bathrooms" not in existing_cols:
+            self._conn.execute("ALTER TABLE listings ADD COLUMN bathrooms REAL")

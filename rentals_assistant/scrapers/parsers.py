@@ -56,7 +56,10 @@ def parse_pets(body: str) -> str | None:
 
 def parse_floor_level(body: str) -> str | None:
     lower = body.lower()
-    if "basement" in lower:
+    if re.search(
+        r"basement|lower\s+level|lower\s+unit|garden\s+level|walkout\s+basement|bsmt|bsmnt",
+        lower,
+    ):
         return "basement"
     if re.search(
         r"\b(?:upper\s+(?:floor|unit|front|rear)|upper\b|[2-9]\w*\s+floor|second\s+floor|third\s+floor)",
@@ -64,7 +67,7 @@ def parse_floor_level(body: str) -> str | None:
     ):
         return "upper"
     if re.search(
-        r"\b(?:main\s+floor|ground\s+floor|1st\s+floor|first\s+floor|garden\s+floor|garden\b|ground\b)",
+        r"\b(?:main\s+(?:floor|level)|ground\s+(?:floor|level)|1st\s+floor|first\s+floor|garden\s+floor|garden\b|ground\b)",
         lower,
     ):
         return "main"
@@ -142,4 +145,24 @@ def parse_utilities(body: str) -> str | None:
         lower,
     ):
         return "extra"
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Bathrooms
+# ---------------------------------------------------------------------------
+
+
+def parse_bathrooms(text: str) -> float | None:
+    lower = text.lower()
+    # Decimal format: "1.5 bath", "2.5 bathrooms"
+    m = re.search(r"(\d+\.?\d*)\s*[Bb]ath", lower)
+    if m:
+        return float(m.group(1))
+    # Word variant: "one and a half"
+    if re.search(r"one\s+and\s+a\s+half", lower):
+        return 1.5
+    # Half bath + full bath combination
+    if re.search(r"(half\s+bath|powder\s+room)", lower) and re.search(r"full\s+bath", lower):
+        return 1.5
     return None

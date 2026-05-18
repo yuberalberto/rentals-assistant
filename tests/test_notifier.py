@@ -130,6 +130,80 @@ class TestFormatMessageLocationLine:
         assert "Unknown" in msg or "city" in msg.lower()
 
 
+class TestFormatMessageBathrooms:
+    def test_bathrooms_shown_in_price_line(self):
+        msg = format_message(_listing(bathrooms=1.5), _perfect_result())
+        assert "1.5BA" in msg
+
+    def test_bathrooms_shown_as_integer(self):
+        msg = format_message(_listing(bathrooms=2.0), _perfect_result())
+        assert "2BA" in msg
+
+    def test_bathrooms_none_omitted(self):
+        msg = format_message(_listing(bathrooms=None), _perfect_result())
+        assert "BA" not in msg
+
+    def test_bathrooms_placed_after_bedrooms(self):
+        msg = format_message(_listing(bedrooms=2, bathrooms=1.5), _perfect_result())
+        # Should show "2BR · 1.5BA" pattern
+        lines = msg.split("\n")
+        price_line = lines[1]
+        assert "2BR" in price_line
+        assert "1.5BA" in price_line
+        assert price_line.index("2BR") < price_line.index("1.5BA")
+
+
+class TestFormatMessageDescription:
+    def test_description_shown_as_summary_line(self):
+        msg = format_message(
+            _listing(description="Spacious apartment with balcony and modern amenities"),
+            _perfect_result(),
+        )
+        assert "Spacious apartment" in msg
+
+    def test_description_truncated_to_100_chars(self):
+        long_desc = "A" * 150
+        msg = format_message(_listing(description=long_desc), _perfect_result())
+        # Should be truncated, not the full 150 chars
+        assert len([line for line in msg.split("\n") if long_desc in line]) == 0
+
+    def test_description_none_omitted(self):
+        msg = format_message(_listing(description=None), _perfect_result())
+        lines = msg.split("\n")
+        # Description should not add an extra line when None
+        # Check that we don't have an empty line or unexpected content
+        assert all(line.strip() for line in lines if line)
+
+    def test_description_empty_string_omitted(self):
+        msg = format_message(_listing(description=""), _perfect_result())
+        lines = msg.split("\n")
+        assert all(line.strip() for line in lines if line)
+
+    def test_description_with_newlines(self):
+        msg = format_message(
+            _listing(description="Line 1\nLine 2\nLine 3"),
+            _perfect_result(),
+        )
+        # Newlines should be preserved in the description line
+        assert "Line 1" in msg
+
+    def test_description_exactly_100_chars(self):
+        desc = "A" * 100
+        msg = format_message(_listing(description=desc), _perfect_result())
+        # Should show exactly 100 chars when at boundary
+        assert desc in msg
+
+
+class TestFormatMessageBathroomsEdgeCases:
+    def test_bathrooms_zero_shown(self):
+        msg = format_message(_listing(bathrooms=0), _perfect_result())
+        assert "0BA" in msg
+
+    def test_bathrooms_with_many_decimals(self):
+        msg = format_message(_listing(bathrooms=1.75), _perfect_result())
+        assert "1.75BA" in msg
+
+
 class TestFormatMessagePetsLine:
     def test_cats_confirmed_shows_paw_emoji(self):
         msg = format_message(_listing(pets="cats_confirmed"), _perfect_result())

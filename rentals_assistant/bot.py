@@ -39,4 +39,4 @@ def build_application(token: str) -> Application:
 
 def start_bot() -> None:
     config = load_config()
-    build_application(config.telegram_token).run_polling()
+    build_application(config.telegram_token).run_polling(drop_pending_updates=True)

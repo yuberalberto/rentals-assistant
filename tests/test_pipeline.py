@@ -125,22 +125,51 @@ async def test_rejected_listing_does_not_trigger_notifier(store):
 # ---------------------------------------------------------------------------
 
 async def test_new_passing_listing_triggers_notification(store):
-    listing = _make_listing()
+    from rentals_assistant.config import Settings
+
+    listing = _make_listing(
+        utilities="included",
+        floor_level="upper",
+        outdoor_space=True,
+        parking_spots=2,
+    )
     scraper = _make_scraper([listing])
     notifier = AsyncMock(return_value=True)
 
-    await run([scraper], store, notifier=notifier)
+    settings = Settings(
+        telegram_token="test",
+        telegram_chat_id="test",
+        min_notify_tier="strong",  # allow STRONG and PERFECT
+    )
+
+    await run([scraper], store, notifier=notifier, settings=settings)
 
     notifier.assert_called_once()
-    assert notifier.call_args[0][0] is listing
+    # enrich() returns a new instance, so check data instead of identity
+    notified_listing = notifier.call_args[0][0]
+    assert notified_listing.source == listing.source
+    assert notified_listing.external_id == listing.external_id
     assert isinstance(notifier.call_args[0][1], ScoringResult)
 
 
 async def test_new_passing_listing_marked_notified_after_alert(store):
-    listing = _make_listing()
+    from rentals_assistant.config import Settings
+
+    listing = _make_listing(
+        utilities="included",
+        floor_level="upper",
+        outdoor_space=True,
+        parking_spots=2,
+    )
     scraper = _make_scraper([listing])
 
-    await run([scraper], store, notifier=AsyncMock(return_value=True))
+    settings = Settings(
+        telegram_token="test",
+        telegram_chat_id="test",
+        min_notify_tier="strong",
+    )
+
+    await run([scraper], store, notifier=AsyncMock(return_value=True), settings=settings)
 
     listing_id = make_listing_id(listing.source, listing.external_id)
     cur = store._conn.execute(
@@ -182,21 +211,31 @@ async def test_existing_passing_listing_does_not_trigger_notification(store):
 
 
 async def test_passing_listing_saved_with_score_and_tier(store):
+    from rentals_assistant.config import Settings
+
     listing = _make_listing(
         utilities="included", floor_level="upper",
         outdoor_space=True, parking_spots=2,
     )
     scraper = _make_scraper([listing])
 
-    await run([scraper], store, notifier=AsyncMock(return_value=True))
+    settings = Settings(
+        telegram_token="test",
+        telegram_chat_id="test",
+        min_notify_tier="strong",
+    )
+
+    await run([scraper], store, notifier=AsyncMock(return_value=True), settings=settings)
 
     listing_id = make_listing_id(listing.source, listing.external_id)
     cur = store._conn.execute(
         "SELECT score, tier FROM listings WHERE id = ?", (listing_id,)
     )
     row = cur.fetchone()
-    assert row[0] == 4
-    assert row[1] == "perfect"
+    # After TASK-CUR-006, scoring expanded to 0-7 with pets and proximity criteria
+    # utilities(1) + upper(1) + outdoor(1) + parking2(1) + pets(1) + cambridge(1) = 6
+    assert row[0] == 6
+    assert row[1] == "strong"
 
 
 # ---------------------------------------------------------------------------
@@ -204,14 +243,27 @@ async def test_passing_listing_saved_with_score_and_tier(store):
 # ---------------------------------------------------------------------------
 
 async def test_scraper_exception_does_not_abort_run(store):
+    from rentals_assistant.config import Settings
+
     failing = MagicMock()
     failing.fetch = AsyncMock(side_effect=RuntimeError("network error"))
 
-    good_listing = _make_listing()
+    good_listing = _make_listing(
+        utilities="included",
+        floor_level="upper",
+        outdoor_space=True,
+        parking_spots=2,
+    )
     good = _make_scraper([good_listing])
     notifier = AsyncMock(return_value=True)
 
-    await run([failing, good], store, notifier=notifier)  # must not raise
+    settings = Settings(
+        telegram_token="test",
+        telegram_chat_id="test",
+        min_notify_tier="strong",
+    )
+
+    await run([failing, good], store, notifier=notifier, settings=settings)  # must not raise
 
     notifier.assert_called_once()
 
@@ -232,9 +284,23 @@ async def test_scraper_exception_is_logged(store):
 
 async def test_end_to_end_mixed_listings(store):
     """1 new passing, 1 rejected, 1 existing passing — only 1 notification sent."""
-    passing_new = _make_listing(external_id="new-001")
+    from rentals_assistant.config import Settings
+
+    passing_new = _make_listing(
+        external_id="new-001",
+        utilities="included",
+        floor_level="upper",
+        outdoor_space=True,
+        parking_spots=2,
+    )
     rejected = _make_listing(external_id="bad-001", price_cad=9999)
-    passing_existing = _make_listing(external_id="old-001")
+    passing_existing = _make_listing(
+        external_id="old-001",
+        utilities="included",
+        floor_level="upper",
+        outdoor_space=True,
+        parking_spots=2,
+    )
 
     existing_id = make_listing_id(passing_existing.source, passing_existing.external_id)
     store.save({
@@ -252,7 +318,7 @@ async def test_end_to_end_mixed_listings(store):
         "parking_spots": passing_existing.parking_spots,
         "pets": passing_existing.pets,
         "utilities": passing_existing.utilities,
-        "score": 3,
+        "score": 4,
         "tier": "strong",
         "notified": 1,
     })
@@ -260,10 +326,19 @@ async def test_end_to_end_mixed_listings(store):
     scraper = _make_scraper([passing_new, rejected, passing_existing])
     notifier = AsyncMock(return_value=True)
 
-    await run([scraper], store, notifier=notifier)
+    settings = Settings(
+        telegram_token="test",
+        telegram_chat_id="test",
+        min_notify_tier="strong",
+    )
+
+    await run([scraper], store, notifier=notifier, settings=settings)
 
     assert notifier.call_count == 1
-    assert notifier.call_args[0][0] is passing_new
+    # enrich() returns a new instance, so check data instead of identity
+    notified_listing = notifier.call_args[0][0]
+    assert notified_listing.source == passing_new.source
+    assert notified_listing.external_id == passing_new.external_id
 
     rejected_id = make_listing_id(rejected.source, rejected.external_id)
     cur = store._conn.execute(
@@ -332,17 +407,30 @@ async def test_concurrent_failure_does_not_cancel_others(store):
     failing.__class__.__name__ = "FailingScraper"
     failing.fetch = AsyncMock(side_effect=RuntimeError("network error"))
 
-    good_a = _make_scraper([_make_listing(external_id="good-a-001")])
+    good_a = _make_scraper([_make_listing(
+        external_id="good-a-001",
+        utilities="included",
+        floor_level="upper",
+        outdoor_space=True,
+        parking_spots=2,
+    )])
     good_a.__class__.__name__ = "GoodA"
 
-    good_b = _make_scraper([_make_listing(external_id="good-b-001")])
+    good_b = _make_scraper([_make_listing(
+        external_id="good-b-001",
+        utilities="included",
+        floor_level="upper",
+        outdoor_space=True,
+        parking_spots=2,
+    )])
     good_b.__class__.__name__ = "GoodB"
 
     from rentals_assistant.config import Settings
     settings = Settings(
         telegram_token="test",
         telegram_chat_id="test",
-        max_concurrent_scrapers=3
+        max_concurrent_scrapers=3,
+        min_notify_tier="strong",
     )
 
     notifier = AsyncMock(return_value=True)
@@ -376,9 +464,23 @@ async def test_run_returns_run_result(store):
 
 async def test_run_result_counts_all_listings(store):
     """RunResult must track found, new, notified, rejected."""
-    new_passing = _make_listing(external_id="new-001")
+    from rentals_assistant.config import Settings
+
+    new_passing = _make_listing(
+        external_id="new-001",
+        utilities="included",
+        floor_level="upper",
+        outdoor_space=True,
+        parking_spots=2,
+    )
     rejected = _make_listing(external_id="bad-001", price_cad=9999)
-    existing = _make_listing(external_id="old-001")
+    existing = _make_listing(
+        external_id="old-001",
+        utilities="included",
+        floor_level="upper",
+        outdoor_space=True,
+        parking_spots=2,
+    )
 
     existing_id = make_listing_id(existing.source, existing.external_id)
     store.save({
@@ -396,7 +498,7 @@ async def test_run_result_counts_all_listings(store):
         "parking_spots": existing.parking_spots,
         "pets": existing.pets,
         "utilities": existing.utilities,
-        "score": 3,
+        "score": 4,
         "tier": "strong",
         "notified": 1,
     })
@@ -404,7 +506,13 @@ async def test_run_result_counts_all_listings(store):
     scraper = _make_scraper([new_passing, rejected, existing])
     notifier = AsyncMock(return_value=True)
 
-    result = await run([scraper], store, notifier=notifier)
+    settings = Settings(
+        telegram_token="test",
+        telegram_chat_id="test",
+        min_notify_tier="strong",
+    )
+
+    result = await run([scraper], store, notifier=notifier, settings=settings)
 
     assert result.scrapers_ok == 1
     assert result.scrapers_failed == 0
@@ -417,15 +525,28 @@ async def test_run_result_counts_all_listings(store):
 async def test_run_result_tracks_scraper_failures(store):
     """RunResult must count failed scrapers and still count listings from ok ones."""
     from rentals_assistant.pipeline import RunResult
+    from rentals_assistant.config import Settings
 
     failing = MagicMock()
     failing.__class__.__name__ = "FailingScraper"
     failing.fetch = AsyncMock(side_effect=RuntimeError("boom"))
 
-    good = _make_scraper([_make_listing(external_id="good-001")])
+    good = _make_scraper([_make_listing(
+        external_id="good-001",
+        utilities="included",
+        floor_level="upper",
+        outdoor_space=True,
+        parking_spots=2,
+    )])
+
+    settings = Settings(
+        telegram_token="test",
+        telegram_chat_id="test",
+        min_notify_tier="strong",
+    )
 
     notifier = AsyncMock(return_value=True)
-    result = await run([failing, good], store, notifier=notifier)
+    result = await run([failing, good], store, notifier=notifier, settings=settings)
 
     assert isinstance(result, RunResult)
     assert result.scrapers_ok == 1
@@ -463,3 +584,259 @@ async def test_run_result_counts_rejected_not_notified(store):
     assert result.listings_new == 0
     assert result.listings_notified == 0
     assert result.listings_rejected == 1
+
+
+# ---------------------------------------------------------------------------
+# TASK-CUR-007: Enrichment + Validation + Tier Gate
+# ---------------------------------------------------------------------------
+
+async def test_enrichment_runs_before_filtering(store):
+    """Enrichment should fill missing fields from title+description before filtering."""
+    from rentals_assistant.enrichment import enrich
+
+    listing = RawListing(
+        source="kijiji",
+        external_id="enrich-001",
+        url="https://kijiji.ca/v-1",
+        title="2BR apartment $1800",
+        price_cad=None,  # missing - should be filled by enrichment
+        bedrooms=None,
+        city="Cambridge",
+        floor_level=None,
+        laundry_inunit=None,
+        outdoor_space=None,
+        parking_spots=None,
+        pets=None,
+        utilities=None,
+        description=None,
+        bathrooms=None,
+    )
+
+    scraper = _make_scraper([listing])
+    notifier = AsyncMock(return_value=True)
+
+    await run([scraper], store, notifier=notifier)
+
+    listing_id = make_listing_id(listing.source, listing.external_id)
+    cur = store._conn.execute(
+        "SELECT price_cad FROM listings WHERE id = ?", (listing_id,)
+    )
+    row = cur.fetchone()
+    assert row[0] == 1800  # enrichment filled the price
+
+
+async def test_validation_rejects_no_price_listings(store):
+    """Listings with no price after enrichment should be rejected."""
+    listing = RawListing(
+        source="kijiji",
+        external_id="noprice-001",
+        url="https://kijiji.ca/v-1",
+        title="Nice apartment",
+        price_cad=None,
+        bedrooms=2,
+        city="Cambridge",
+        floor_level="upper",
+        laundry_inunit=True,
+        outdoor_space=True,
+        parking_spots=1,
+        pets="cats_confirmed",
+        utilities="included",
+        description="No price mentioned",
+        bathrooms=1.5,
+    )
+
+    scraper = _make_scraper([listing])
+    notifier = AsyncMock(return_value=True)
+
+    result = await run([scraper], store, notifier=notifier)
+
+    # Should be rejected (notified=0, tier=None)
+    assert result.listings_rejected == 1
+    assert result.listings_notified == 0
+
+    listing_id = make_listing_id(listing.source, listing.external_id)
+    cur = store._conn.execute(
+        "SELECT tier, notified FROM listings WHERE id = ?", (listing_id,)
+    )
+    row = cur.fetchone()
+    assert row[0] is None
+    assert row[1] == 0
+
+
+async def test_tier_gate_respects_min_notify_tier_perfect(store):
+    """With min_notify_tier=perfect, only PERFECT listings trigger notifications."""
+    from rentals_assistant.config import Settings
+
+    # Create a STRONG listing (score 5)
+    strong_listing = _make_listing(
+        external_id="strong-001",
+        utilities="included",
+        floor_level="upper",
+        outdoor_space=True,
+        parking_spots=2,
+    )
+
+    scraper = _make_scraper([strong_listing])
+    notifier = AsyncMock(return_value=True)
+
+    settings = Settings(
+        telegram_token="test",
+        telegram_chat_id="test",
+        min_notify_tier="perfect",
+    )
+
+    result = await run([scraper], store, notifier=notifier, settings=settings)
+
+    # STRONG listing should be saved but not notified
+    assert result.listings_notified == 0
+
+    listing_id = make_listing_id(strong_listing.source, strong_listing.external_id)
+    cur = store._conn.execute(
+        "SELECT tier, notified FROM listings WHERE id = ?", (listing_id,)
+    )
+    row = cur.fetchone()
+    assert row[0] == "strong"
+    assert row[1] == 0
+
+
+async def test_tier_gate_respects_min_notify_tier_strong(store):
+    """With min_notify_tier=strong, STRONG and PERFECT trigger notifications."""
+    from rentals_assistant.config import Settings
+
+    strong_listing = _make_listing(
+        external_id="strong-001",
+        utilities="included",
+        floor_level="upper",
+        outdoor_space=True,
+        parking_spots=2,
+    )
+
+    scraper = _make_scraper([strong_listing])
+    notifier = AsyncMock(return_value=True)
+
+    settings = Settings(
+        telegram_token="test",
+        telegram_chat_id="test",
+        min_notify_tier="strong",
+    )
+
+    result = await run([scraper], store, notifier=notifier, settings=settings)
+
+    # STRONG listing should be notified
+    assert result.listings_notified == 1
+
+
+async def test_check_listings_saved_but_not_notified(store):
+    """CHECK tier listings should be saved in DB but not notified with default config."""
+    from rentals_assistant.config import Settings
+
+    # Create a CHECK listing (low score) - passes hard filters but low score
+    check_listing = _make_listing(
+        external_id="check-001",
+        utilities=None,
+        floor_level="main",  # passes hard filter
+        outdoor_space=False,
+        parking_spots=1,
+    )
+
+    scraper = _make_scraper([check_listing])
+    notifier = AsyncMock(return_value=True)
+
+    settings = Settings(
+        telegram_token="test",
+        telegram_chat_id="test",
+        min_notify_tier="perfect",  # default
+    )
+
+    result = await run([scraper], store, notifier=notifier, settings=settings)
+
+    # CHECK listing should be saved but not notified
+    assert result.listings_rejected == 0  # not rejected by hard filters
+    assert result.listings_notified == 0
+
+    listing_id = make_listing_id(check_listing.source, check_listing.external_id)
+    cur = store._conn.execute(
+        "SELECT tier, notified, score FROM listings WHERE id = ?", (listing_id,)
+    )
+    row = cur.fetchone()
+    assert row[0] == "check"
+    assert row[1] == 0
+    assert row[2] is not None
+
+
+async def test_tier_gate_unknown_tier_defaults_to_lowest(store):
+    """Unknown min_notify_tier should default to 'check' behavior (notify all)."""
+    from rentals_assistant.config import Settings
+
+    check_listing = _make_listing(
+        external_id="check-001",
+        utilities=None,
+        floor_level="main",
+        outdoor_space=False,
+        parking_spots=1,
+    )
+
+    scraper = _make_scraper([check_listing])
+    notifier = AsyncMock(return_value=True)
+
+    settings = Settings(
+        telegram_token="test",
+        telegram_chat_id="test",
+        min_notify_tier="unknown_tier",  # invalid tier name
+    )
+
+    result = await run([scraper], store, notifier=notifier, settings=settings)
+
+    # Unknown tier defaults to lowest (0), so CHECK listing passes gate
+    assert result.listings_notified == 1
+
+
+async def test_existing_listing_below_tier_not_renotified(store):
+    """Existing listing below tier threshold should not trigger re-notification."""
+    from rentals_assistant.config import Settings
+
+    strong_listing = _make_listing(
+        external_id="strong-001",
+        utilities="included",
+        floor_level="upper",
+        outdoor_space=True,
+        parking_spots=2,
+    )
+
+    # Pre-save as existing with CHECK tier (low score from before)
+    listing_id = make_listing_id(strong_listing.source, strong_listing.external_id)
+    store.save({
+        "id": listing_id,
+        "source": strong_listing.source,
+        "external_id": strong_listing.external_id,
+        "url": strong_listing.url,
+        "title": strong_listing.title,
+        "price_cad": strong_listing.price_cad,
+        "bedrooms": strong_listing.bedrooms,
+        "city": strong_listing.city,
+        "floor_level": strong_listing.floor_level,
+        "laundry_inunit": strong_listing.laundry_inunit,
+        "outdoor_space": strong_listing.outdoor_space,
+        "parking_spots": strong_listing.parking_spots,
+        "pets": strong_listing.pets,
+        "utilities": strong_listing.utilities,
+        "score": 2,
+        "tier": "check",
+        "notified": 1,
+    })
+
+    scraper = _make_scraper([strong_listing])
+    notifier = AsyncMock(return_value=True)
+
+    settings = Settings(
+        telegram_token="test",
+        telegram_chat_id="test",
+        min_notify_tier="perfect",
+    )
+
+    result = await run([scraper], store, notifier=notifier, settings=settings)
+
+    # Not new, and even if it were, below tier threshold
+    assert result.listings_new == 0
+    assert result.listings_notified == 0
+    notifier.assert_not_called()

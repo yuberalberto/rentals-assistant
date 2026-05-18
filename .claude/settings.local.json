@@ -36,7 +36,15 @@
       "Bash(.venv/Scripts/python.exe -m pytest --cov=rentals_assistant --cov-report=term-missing)",
       "Bash(.venv/Scripts/python.exe -m pytest)",
       "Bash(.venv/Scripts/python.exe -m pytest tests/test_e2e.py -v)",
-      "Bash(gh pr create --title 'feat: production hardening for unattended daily operation' --body ':*)"
+      "Bash(gh pr create --title 'feat: production hardening for unattended daily operation' --body ':*)",
+      "Bash(.venv/Scripts/python.exe -c ':*)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/ -v)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/test_e2e.py tests/scrapers/test_craigslist.py tests/scrapers/test_rentals_ca.py -v)",
+      "Bash(.venv/Scripts/python.exe -m pytest --tb=short -q)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/scrapers/test_http_integration.py -q --tb=short)",
+      "WebFetch(domain:www.viewit.ca)",
+      "WebFetch(domain:www.zumper.com)",
+      "WebFetch(domain:www.padmapper.com)"
     ],
     "additionalDirectories": [
       "c:\\Users\\yuber\\OneDrive\\Documents\\Dev\\rentals-assistant\\rentals_assistant\\scrapers"
