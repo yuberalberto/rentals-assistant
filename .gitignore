@@ -27,3 +27,5 @@ htmlcov/
 # Project-specific runtime data
 listings.db
 
+# Claude AI
+.claude/

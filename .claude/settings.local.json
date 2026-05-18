@@ -34,7 +34,9 @@
       "Bash(c:\\\\Users\\\\yuber\\\\OneDrive\\\\Documents\\\\Dev\\\\rentals-assistant\\\\.venv\\\\Scripts\\\\python.exe -m pytest tests/test_pipeline.py -v)",
       "Bash(.venv/Scripts/python.exe -m pytest tests/test_pipeline.py -v)",
       "Bash(.venv/Scripts/python.exe -m pytest --cov=rentals_assistant --cov-report=term-missing)",
-      "Bash(.venv/Scripts/python.exe -m pytest)"
+      "Bash(.venv/Scripts/python.exe -m pytest)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/test_e2e.py -v)",
+      "Bash(gh pr create --title 'feat: production hardening for unattended daily operation' --body ':*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\yuber\\OneDrive\\Documents\\Dev\\rentals-assistant\\rentals_assistant\\scrapers"
